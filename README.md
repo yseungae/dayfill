@@ -1,10 +1,10 @@
-# Time Tattery
+# Dayfill
 
 한 해 동안 살아온 시간을 배터리처럼 채워 보고, 하루의 사진과 짧은 기록을 기기에 남기는 모바일 중심 PWA입니다.
 
 ## 웹앱
 
-**https://yseungae.github.io/time-tattery/**
+**https://yseungae.github.io/dayfill/**
 
 ## 주요 기능
 

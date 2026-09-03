@@ -1,4 +1,4 @@
-name: Deploy Time Tattery
+name: Deploy Dayfill
 on:
   push:
     branches: [main]

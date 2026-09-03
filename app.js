@@ -3,7 +3,7 @@ const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
 
 const messages = {
   ko: {
-    menuOpen: '메뉴 열기', menuClose: '메뉴 닫기', language: '언어 변경', overview: '올해의 시간',
+    menuOpen: '메뉴 열기', menuClose: '메뉴 닫기', language: '언어 변경', refresh: '현재 날짜로 업데이트', overview: '올해의 시간',
     yearProgress: (p) => `올해의 ${p}%를 살았어요`, fridays: (n) => `앞으로 금요일이 ${n}번 남았어요`,
     todayQuestion: '오늘은 어땠나요?', addPhoto: '사진 추가', changePhoto: '사진 변경', removePhoto: '사진 삭제',
     placeholder: '오늘을 짧게 남겨보세요...', save: '오늘 기록하기', update: '수정 내용 저장', saved: '오늘의 기록을 저장했어요.',
@@ -15,7 +15,7 @@ const messages = {
     shortDate: (d) => `${d.getMonth()+1}월 ${d.getDate()}일`, current: '현재'
   },
   en: {
-    menuOpen: 'Open menu', menuClose: 'Close menu', language: 'Change language', overview: 'Time lived this year',
+    menuOpen: 'Open menu', menuClose: 'Close menu', language: 'Change language', refresh: 'Update to current date', overview: 'Time lived this year',
     yearProgress: (p) => `You’ve lived ${p}% of this year`, fridays: (n) => `${n} Friday${n === 1 ? '' : 's'} left this year`,
     todayQuestion: 'How was today?', addPhoto: 'Add photo', changePhoto: 'Change photo', removePhoto: 'Remove photo',
     placeholder: 'Leave a few words about today...', save: 'Save today', update: 'Save changes', saved: 'Today’s moment is saved.',
@@ -80,10 +80,10 @@ function remainingFridays(date = new Date()) {
   }
   return count;
 }
-function batteryMarkup(percent, label) {
-  const cells = Array.from({length: 20}, (_, i) => {
-    const fill = Math.max(0, Math.min(1, percent / 5 - i));
-    return `<span class="battery-cell"><i style="transform:scaleX(${fill})"></i></span>`;
+function batteryMarkup(percent, label, fills = null) {
+  const segmentFills = fills || Array.from({length: 12}, (_, i) => Math.max(0, Math.min(1, percent / (100 / 12) - i)));
+  const cells = segmentFills.map((fill, i) => {
+    return `<span class="battery-cell" aria-hidden="true"><i style="transform:scaleX(${fill})"></i>${i < 11 ? '<b></b>' : ''}</span>`;
   }).join('');
   return `<div class="battery-wrap"><div class="battery" role="img" aria-label="${label}: ${percent}%">${cells}</div></div>`;
 }
@@ -91,7 +91,7 @@ function t(key, ...args) { const value = messages[state.language][key]; return t
 function syncStaticText() {
   document.documentElement.lang = state.language;
   $$('[data-i18n]').forEach(el => el.textContent = t(el.dataset.i18n));
-  $('#menuButton').ariaLabel = t('menuOpen'); $('#closeMenu').ariaLabel = t('menuClose'); $('#languageButton').ariaLabel = t('language');
+  $('#menuButton').ariaLabel = t('menuOpen'); $('#closeMenu').ariaLabel = t('menuClose'); $('#languageButton').ariaLabel = t('language'); $('#refreshButton').ariaLabel = t('refresh');
   $$('[data-language]').forEach(button => button.classList.toggle('active', button.dataset.language === state.language));
 }
 
@@ -100,7 +100,7 @@ async function renderHome() {
   const progress = yearPercent(now); const todayKey = localDateKey(now); const entry = await getEntry(todayKey);
   $('#app').innerHTML = `<section class="hero">
     <p class="eyebrow">${t('overview')}</p><h1 class="year">${now.getFullYear()}<sup></sup></h1>
-    ${batteryMarkup(progress, t('overview'))}<p class="progress-copy">${t('yearProgress', progress)}</p>
+    ${batteryMarkup(progress, t('overview'), Array.from({length: 12}, (_, month) => monthPercent(month, now.getFullYear(), now) / 100))}<p class="progress-copy">${t('yearProgress', progress)}</p>
     <p class="fridays">${t('fridays', remainingFridays(now))}</p>
   </section>
   <section class="today-section">
@@ -115,7 +115,7 @@ function renderEntryArea(entry, editing = false) {
   if (entry && !editing) {
     const photoUrl = entry.photo ? URL.createObjectURL(entry.photo) : null;
     area.innerHTML = `<article class="saved-entry">${photoUrl ? `<img src="${photoUrl}" alt="">` : ''}${entry.text ? `<blockquote>${escapeHtml(entry.text)}</blockquote>` : ''}
-      <div class="entry-actions"><button class="button ghost" id="editEntry">${t('edit')}</button><button class="button ghost" id="deleteEntry">${t('delete')}</button></div></article>`;
+      <div class="entry-actions"><button class="button ghost" id="editEntry">${icon('edit')}${t('edit')}</button><button class="button ghost" id="deleteEntry">${icon('trash')}${t('delete')}</button></div></article>`;
     $('#editEntry').onclick = () => { state.photo = entry.photo || null; renderEntryArea(entry, true); };
     $('#deleteEntry').onclick = () => $('#confirmDialog').showModal();
     return;
@@ -123,8 +123,8 @@ function renderEntryArea(entry, editing = false) {
   state.photo = editing && entry ? entry.photo || null : null;
   area.innerHTML = `<form class="entry-form" id="entryForm">
     <input class="photo-input" id="photoInput" type="file" accept="image/*">
-    <label class="photo-drop" for="photoInput" id="photoDrop"><span class="photo-prompt">＋ ${state.photo ? t('changePhoto') : t('addPhoto')}</span></label>
-    <div class="photo-controls" id="photoControls" ${state.photo ? '' : 'hidden'}><button class="button ghost" type="button" id="removePhoto">${t('removePhoto')}</button></div>
+    <label class="photo-drop" for="photoInput" id="photoDrop"><span class="photo-prompt">${icon('image')} ${state.photo ? t('changePhoto') : t('addPhoto')}</span></label>
+    <div class="photo-controls" id="photoControls" ${state.photo ? '' : 'hidden'}><button class="button ghost" type="button" id="removePhoto">${icon('trash')}${t('removePhoto')}</button></div>
     <textarea id="entryText" maxlength="500" placeholder="${t('placeholder')}">${entry ? escapeHtml(entry.text || '') : ''}</textarea>
     <button class="button" type="submit">${editing ? t('update') : t('save')}</button><p class="form-note" id="formNote" aria-live="polite"></p>
   </form>`;
@@ -145,7 +145,7 @@ function renderEntryArea(entry, editing = false) {
 function updatePhotoPreview() {
   const drop = $('#photoDrop'); if (!drop) return;
   $('img', drop)?.remove();
-  $('.photo-prompt', drop).textContent = `＋ ${state.photo ? t('changePhoto') : t('addPhoto')}`;
+  $('.photo-prompt', drop).innerHTML = `${icon('image')} ${state.photo ? t('changePhoto') : t('addPhoto')}`;
   $('#photoControls').hidden = !state.photo;
   if (state.photo) { const img = new Image(); img.src = URL.createObjectURL(state.photo); img.alt = ''; drop.prepend(img); }
 }
@@ -172,7 +172,7 @@ async function renderMonth(year, month) {
 async function renderMenu() {
   const now = new Date(); $('#menuYear').textContent = state.year;
   $('#monthNavigation').innerHTML = t('months').map((name, month) => { const p = monthPercent(month, state.year, now); const current = state.year === now.getFullYear() && month === now.getMonth();
-    return `<button class="month-link ${current ? 'current' : ''}" data-month="${month}"><span>${name}</span><span class="mini-track"><i style="width:${p}%"></i></span><em>${p}%</em></button>`;
+    return `<button class="month-link ${current ? 'current' : ''}" data-month="${month}"><span>${name}</span><em>${p}%</em></button>`;
   }).join('');
   $$('[data-month]', $('#monthNavigation')).forEach(button => button.onclick = () => renderMonth(state.year, Number(button.dataset.month)));
   const years = [...new Set((await getAllEntries()).map(e => e.year))].filter(y => y < now.getFullYear()).sort((a,b) => b-a);
@@ -180,10 +180,19 @@ async function renderMenu() {
   $$('[data-year]', $('#pastYears')).forEach(button => button.onclick = () => { state.year = Number(button.dataset.year); renderMenu(); });
 }
 function escapeHtml(value) { const div = document.createElement('div'); div.textContent = value; return div.innerHTML; }
+function icon(name) {
+  const paths = {
+    image: '<rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8.5" cy="9" r="1.5"/><path d="m21 15-5-5L5 20"/>',
+    edit: '<path d="M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L8 18l-4 1 1-4Z"/>',
+    trash: '<path d="M4 7h16M9 7V4h6v3m3 0-1 13H7L6 7M10 11v5M14 11v5"/>'
+  };
+  return `<svg class="inline-icon" viewBox="0 0 24 24" aria-hidden="true">${paths[name]}</svg>`;
+}
 function openMenu() { $('#sideMenu').classList.add('open'); $('#sideMenu').ariaHidden = 'false'; $('#scrim').hidden = false; $('#menuButton').ariaExpanded = 'true'; }
 function closeMenu() { $('#sideMenu').classList.remove('open'); $('#sideMenu').ariaHidden = 'true'; $('#scrim').hidden = true; $('#menuButton').ariaExpanded = 'false'; }
 
 $('#menuButton').onclick = openMenu; $('#closeMenu').onclick = closeMenu; $('#scrim').onclick = closeMenu; $('#homeButton').onclick = renderHome;
+$('#refreshButton').onclick = async () => { state.view === 'home' ? await renderHome() : await renderMonth(state.year, state.month); $('#refreshButton').classList.add('spinning'); setTimeout(() => $('#refreshButton').classList.remove('spinning'), 420); };
 $('#languageButton').onclick = () => { const pop = $('#languagePopover'); pop.hidden = !pop.hidden; $('#languageButton').ariaExpanded = String(!pop.hidden); };
 $$('[data-language]').forEach(button => button.onclick = async () => { state.language = button.dataset.language; localStorage.setItem('tt-language', state.language); $('#languagePopover').hidden = true; syncStaticText(); state.view === 'home' ? await renderHome() : await renderMonth(state.year, state.month); });
 $('#cancelDelete').onclick = () => $('#confirmDialog').close();
