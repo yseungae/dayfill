@@ -4,7 +4,7 @@
 
 ## 웹앱
 
-배포 후 이곳에 공개 주소를 안내합니다.
+**https://yseungae.github.io/time-tattery/**
 
 ## 주요 기능
 
