@@ -9,9 +9,9 @@ const png = size => {
   const raw=Buffer.alloc((size*4+1)*size); const set=(x,y,r,g,b,a=255)=>{const i=y*(size*4+1)+1+x*4;raw[i]=r;raw[i+1]=g;raw[i+2]=b;raw[i+3]=a;};
   for(let y=0;y<size;y++){for(let x=0;x<size;x++){const radius=size*.22;const dx=Math.max(radius-x,0,x-(size-radius));const dy=Math.max(radius-y,0,y-(size-radius));const inside=dx*dx+dy*dy<=radius*radius;set(x,y,...(inside?[248,250,248,255]:[0,0,0,0]));}}
   const rect=(x0,y0,x1,y1,c)=>{for(let y=Math.floor(y0);y<Math.ceil(y1);y++)for(let x=Math.floor(x0);x<Math.ceil(x1);x++)if(x>=0&&y>=0&&x<size&&y<size)set(x,y,...c);};
-  rect(size*.10,size*.28,size*.84,size*.72,[30,64,49,255]); rect(size*.84,size*.41,size*.92,size*.59,[30,64,49,255]); rect(size*.16,size*.35,size*.78,size*.65,[168,217,74,255]);
+  rect(size*.10,size*.28,size*.84,size*.72,[23,25,29,255]); rect(size*.84,size*.41,size*.92,size*.59,[23,25,29,255]); rect(size*.16,size*.35,size*.78,size*.65,[79,110,247,255]);
   // Geometric DF remains legible even on small launch icons.
-  rect(size*.27,size*.41,size*.33,size*.60,[23,52,39,255]);rect(size*.27,size*.41,size*.40,size*.47,[23,52,39,255]);rect(size*.27,size*.54,size*.40,size*.60,[23,52,39,255]);rect(size*.40,size*.46,size*.45,size*.55,[23,52,39,255]);rect(size*.50,size*.41,size*.56,size*.60,[23,52,39,255]);rect(size*.50,size*.41,size*.70,size*.47,[23,52,39,255]);rect(size*.50,size*.50,size*.66,size*.56,[23,52,39,255]);
+  rect(size*.27,size*.41,size*.33,size*.60,[255,255,255,255]);rect(size*.27,size*.41,size*.40,size*.47,[255,255,255,255]);rect(size*.27,size*.54,size*.40,size*.60,[255,255,255,255]);rect(size*.40,size*.46,size*.45,size*.55,[255,255,255,255]);rect(size*.50,size*.41,size*.56,size*.60,[255,255,255,255]);rect(size*.50,size*.41,size*.70,size*.47,[255,255,255,255]);rect(size*.50,size*.50,size*.66,size*.56,[255,255,255,255]);
   const ihdr=Buffer.alloc(13);ihdr.writeUInt32BE(size,0);ihdr.writeUInt32BE(size,4);ihdr[8]=8;ihdr[9]=6;
   return Buffer.concat([Buffer.from([137,80,78,71,13,10,26,10]),chunk('IHDR',ihdr),chunk('IDAT',deflateSync(raw)),chunk('IEND',Buffer.alloc(0))]);
 };

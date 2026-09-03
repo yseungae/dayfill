@@ -4,24 +4,24 @@ const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
 const messages = {
   ko: {
     menuOpen: '메뉴 열기', menuClose: '메뉴 닫기', language: '언어 변경', refresh: '현재 날짜로 업데이트', overview: '올해의 시간',
-    yearProgress: (p) => `올해의 ${p}%를 살았어요`, fridays: (n) => `앞으로 금요일이 ${n}번 남았어요`,
+    yearProgress: (p) => `올해의 ${p}%가 채워졌어요`, fridays: (n) => `앞으로 금요일이 ${n}번 남았어요`,
     todayQuestion: '오늘은 어땠나요?', addPhoto: '사진 추가', changePhoto: '사진 변경', removePhoto: '사진 삭제',
     placeholder: '오늘을 짧게 남겨보세요...', save: '오늘 기록하기', update: '수정 내용 저장', saved: '오늘의 기록을 저장했어요.',
     edit: '기록 수정', delete: '기록 삭제', deleteTitle: '기록을 삭제할까요?', deleteBody: '사진과 짧은 기록이 이 기기에서 삭제됩니다.',
     cancel: '취소', pastYears: '지난 연도', records: '남긴 기록', noRecords: '이 달에는 아직 남긴 기록이 없어요.',
-    monthProgress: (m, p) => `${m}월의 ${p}%를 살았어요`, back: '← 올해로 돌아가기', footer: '당신의 시간은 채워지고 있어요.',
+    monthProgress: (m, p) => `${m}의 ${p}%가 채워졌어요`, back: '← 올해로 돌아가기', footer: '당신의 시간은 채워지고 있어요.',
     textRequired: '짧은 기록이나 사진 중 하나를 남겨주세요.', photoError: '사진을 불러오지 못했어요. 다른 사진을 선택해주세요.',
     months: Array.from({length: 12}, (_, i) => `${i + 1}월`), date: (d) => `${d.getFullYear()}년 ${d.getMonth()+1}월 ${d.getDate()}일`,
     shortDate: (d) => `${d.getMonth()+1}월 ${d.getDate()}일`, current: '현재'
   },
   en: {
     menuOpen: 'Open menu', menuClose: 'Close menu', language: 'Change language', refresh: 'Update to current date', overview: 'Time lived this year',
-    yearProgress: (p) => `You’ve lived ${p}% of this year`, fridays: (n) => `${n} Friday${n === 1 ? '' : 's'} left this year`,
+    yearProgress: (p) => `This year is ${p}% filled`, fridays: (n) => `${n} Friday${n === 1 ? '' : 's'} left this year`,
     todayQuestion: 'How was today?', addPhoto: 'Add photo', changePhoto: 'Change photo', removePhoto: 'Remove photo',
     placeholder: 'Leave a few words about today...', save: 'Save today', update: 'Save changes', saved: 'Today’s moment is saved.',
     edit: 'Edit entry', delete: 'Delete entry', deleteTitle: 'Delete this entry?', deleteBody: 'The photo and note will be removed from this device.',
     cancel: 'Cancel', pastYears: 'Past Years', records: 'Moments saved', noRecords: 'No moments saved in this month yet.',
-    monthProgress: (m, p) => `You’ve lived ${p}% of ${m}`, back: '← Back to this year', footer: 'Your time is filling up.',
+    monthProgress: (m, p) => `${m} is ${p}% filled`, back: '← Back to this year', footer: 'Your time is filling up.',
     textRequired: 'Add a short note or a photo.', photoError: 'We couldn’t read that photo. Please choose another.',
     months: ['January','February','March','April','May','June','July','August','September','October','November','December'],
     date: (d) => new Intl.DateTimeFormat('en-US', {month:'long', day:'numeric', year:'numeric'}).format(d),
@@ -99,7 +99,7 @@ async function renderHome() {
   const now = new Date(); state.year = now.getFullYear(); state.month = null; state.view = 'home';
   const progress = yearPercent(now); const todayKey = localDateKey(now); const entry = await getEntry(todayKey);
   $('#app').innerHTML = `<section class="hero">
-    <p class="eyebrow">${t('overview')}</p><h1 class="year">${now.getFullYear()}<sup></sup></h1>
+    <p class="eyebrow">${t('overview')}</p><h1 class="year">${now.getFullYear()}</h1>
     ${batteryMarkup(progress, t('overview'), Array.from({length: 12}, (_, month) => monthPercent(month, now.getFullYear(), now) / 100))}<p class="progress-copy">${t('yearProgress', progress)}</p>
     <p class="fridays">${t('fridays', remainingFridays(now))}</p>
   </section>
@@ -164,7 +164,7 @@ async function renderMonth(year, month) {
     return `<article class="entry-card">${src ? `<img src="${src}" alt="">` : ''}<time datetime="${entry.date}">${t('shortDate', d)}</time>${entry.text ? `<p>${escapeHtml(entry.text)}</p>` : ''}</article>`;
   }).join('');
   $('#app').innerHTML = `<section class="month-view"><button class="back-button" id="backHome">${t('back')}</button><section class="hero">
-    <p class="eyebrow">${year}</p><h1 class="year">${t('months')[month]}<sup></sup></h1>${batteryMarkup(p, t('months')[month])}
+    <p class="eyebrow">${year}</p><h1 class="year">${t('months')[month]}</h1>${batteryMarkup(p, t('months')[month])}
     <p class="progress-copy">${t('monthProgress', t('months')[month], p)}</p></section>
     <section class="month-records"><h2>${t('records')}</h2>${cards ? `<div class="entry-grid">${cards}</div>` : `<div class="empty-state">${t('noRecords')}</div>`}</section></section>`;
   $('#backHome').onclick = renderHome; renderMenu(); $('#app').focus(); window.scrollTo({top: 0, behavior: 'smooth'});
