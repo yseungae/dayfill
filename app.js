@@ -3,7 +3,8 @@ const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
 
 const messages = {
   ko: {
-    menuOpen: '메뉴 열기', menuClose: '메뉴 닫기', language: '언어 변경', refresh: '현재 날짜로 업데이트', overview: '올해의 시간',
+    menuOpen: '메뉴 열기', menuClose: '메뉴 닫기', language: '언어 변경', refresh: '최신 버전 확인', overview: '올해의 시간',
+    updateChecking: '최신 버전을 확인하고 있어요...', updateDone: 'Dayfill이 업데이트되었어요.', updateCurrent: '이미 최신 버전이에요.', updateFailed: '업데이트를 확인하지 못했어요. 잠시 후 다시 시도해주세요.',
     yearProgress: (p) => `올해의 ${p}%가 채워졌어요`, fridays: (n) => `앞으로 금요일이 ${n}번 남았어요`,
     todayQuestion: '오늘은 어땠나요?', addPhoto: '사진 추가', changePhoto: '사진 변경', removePhoto: '사진 삭제',
     placeholder: '오늘을 짧게 남겨보세요...', save: '오늘 기록하기', update: '수정 내용 저장', saved: '오늘의 기록을 저장했어요.',
@@ -15,7 +16,8 @@ const messages = {
     shortDate: (d) => `${d.getMonth()+1}월 ${d.getDate()}일`, current: '현재'
   },
   en: {
-    menuOpen: 'Open menu', menuClose: 'Close menu', language: 'Change language', refresh: 'Update to current date', overview: 'Time lived this year',
+    menuOpen: 'Open menu', menuClose: 'Close menu', language: 'Change language', refresh: 'Check for updates', overview: 'Time lived this year',
+    updateChecking: 'Checking for updates...', updateDone: 'Dayfill has been updated.', updateCurrent: "You're already up to date.", updateFailed: 'Could not check for updates. Please try again.',
     yearProgress: (p) => `This year is ${p}% filled`, fridays: (n) => `${n} Friday${n === 1 ? '' : 's'} left this year`,
     todayQuestion: 'How was today?', addPhoto: 'Add photo', changePhoto: 'Change photo', removePhoto: 'Remove photo',
     placeholder: 'Leave a few words about today...', save: 'Save today', update: 'Save changes', saved: 'Today’s moment is saved.',
@@ -180,6 +182,58 @@ async function renderMenu() {
   $$('[data-year]', $('#pastYears')).forEach(button => button.onclick = () => { state.year = Number(button.dataset.year); renderMenu(); });
 }
 function escapeHtml(value) { const div = document.createElement('div'); div.textContent = value; return div.innerHTML; }
+let toastTimer;
+function showUpdateToast(message, duration = 2600) {
+  const toast = $('#updateToast');
+  clearTimeout(toastTimer); toast.textContent = message; toast.hidden = false;
+  if (duration) toastTimer = setTimeout(() => { toast.hidden = true; }, duration);
+}
+
+let updateInProgress = false;
+let reloadTriggered = false;
+async function waitForInstalled(worker, timeout = 10000) {
+  if (!worker || worker.state === 'installed' || worker.state === 'activated') return worker;
+  return new Promise(resolve => {
+    const timer = setTimeout(() => resolve(worker), timeout);
+    worker.addEventListener('statechange', () => {
+      if (worker.state === 'installed' || worker.state === 'activated' || worker.state === 'redundant') {
+        clearTimeout(timer); resolve(worker);
+      }
+    });
+  });
+}
+
+async function checkForAppUpdate() {
+  if (updateInProgress) return;
+  updateInProgress = true;
+  const button = $('#refreshButton'); button.classList.add('spinning'); button.disabled = true;
+  showUpdateToast(t('updateChecking'), 0);
+  try {
+    state.view === 'home' ? await renderHome() : await renderMonth(state.year, state.month);
+    if (!('serviceWorker' in navigator)) { showUpdateToast(t('updateCurrent')); return; }
+    const hadController = Boolean(navigator.serviceWorker.controller);
+    const registration = await navigator.serviceWorker.getRegistration() || await navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' });
+    let discoveredWorker = registration.waiting || registration.installing || null;
+    const onUpdateFound = () => { discoveredWorker = registration.installing; };
+    registration.addEventListener('updatefound', onUpdateFound);
+    await registration.update();
+    await new Promise(resolve => setTimeout(resolve, 350));
+    registration.removeEventListener('updatefound', onUpdateFound);
+    discoveredWorker = registration.waiting || registration.installing || discoveredWorker;
+    if (!discoveredWorker) { showUpdateToast(t('updateCurrent')); return; }
+    const worker = await waitForInstalled(discoveredWorker);
+    if (worker.state === 'redundant') throw new Error('Service Worker installation failed');
+    if (hadController) sessionStorage.setItem('dayfill-update-applied', '1');
+    (registration.waiting || worker).postMessage('SKIP_WAITING');
+    if (!hadController) showUpdateToast(t('updateCurrent'));
+  } catch (error) {
+    console.error('Dayfill update check failed:', error);
+    showUpdateToast(t('updateFailed'), 3600);
+  } finally {
+    updateInProgress = false; button.disabled = false;
+    setTimeout(() => button.classList.remove('spinning'), 420);
+  }
+}
 function icon(name) {
   const paths = {
     image: '<rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8.5" cy="9" r="1.5"/><path d="m21 15-5-5L5 20"/>',
@@ -192,7 +246,7 @@ function openMenu() { $('#sideMenu').classList.add('open'); $('#sideMenu').ariaH
 function closeMenu() { $('#sideMenu').classList.remove('open'); $('#sideMenu').ariaHidden = 'true'; $('#scrim').hidden = true; $('#menuButton').ariaExpanded = 'false'; }
 
 $('#menuButton').onclick = openMenu; $('#closeMenu').onclick = closeMenu; $('#scrim').onclick = closeMenu; $('#homeButton').onclick = renderHome;
-$('#refreshButton').onclick = async () => { state.view === 'home' ? await renderHome() : await renderMonth(state.year, state.month); $('#refreshButton').classList.add('spinning'); setTimeout(() => $('#refreshButton').classList.remove('spinning'), 420); };
+$('#refreshButton').onclick = checkForAppUpdate;
 $('#languageButton').onclick = () => { const pop = $('#languagePopover'); pop.hidden = !pop.hidden; $('#languageButton').ariaExpanded = String(!pop.hidden); };
 $$('[data-language]').forEach(button => button.onclick = async () => { state.language = button.dataset.language; localStorage.setItem('tt-language', state.language); $('#languagePopover').hidden = true; syncStaticText(); state.view === 'home' ? await renderHome() : await renderMonth(state.year, state.month); });
 $('#cancelDelete').onclick = () => $('#confirmDialog').close();
@@ -201,5 +255,16 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') closeMenu();
 document.addEventListener('click', e => { if (!e.target.closest('.language-wrap')) $('#languagePopover').hidden = true; });
 
 syncStaticText(); renderHome();
-if ('serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js'));
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (!reloadTriggered && sessionStorage.getItem('dayfill-update-applied') === '1') {
+      reloadTriggered = true; window.location.reload();
+    }
+  });
+  window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' }));
+}
+if (sessionStorage.getItem('dayfill-update-applied') === '1') {
+  sessionStorage.removeItem('dayfill-update-applied');
+  showUpdateToast(t('updateDone'), 3200);
+}
 let activeDay = localDateKey(); setInterval(() => { const next = localDateKey(); if (next !== activeDay) { activeDay = next; renderHome(); } }, 60000);

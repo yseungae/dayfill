@@ -114,8 +114,10 @@ dialog::backdrop { background: rgba(18,23,19,.42); }
 dialog h2 { margin: 0; font-weight: 600; font-size: 21px; }
 dialog p { color: var(--muted); line-height: 1.6; }
 .dialog-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 22px; }
+.update-toast { position: fixed; z-index: 50; left: 50%; bottom: max(24px, env(safe-area-inset-bottom)); transform: translateX(-50%); width: max-content; max-width: calc(100% - 40px); padding: 11px 16px; border: 1px solid var(--line); border-radius: 9px; background: rgba(20,23,28,.94); color: #fff; box-shadow: 0 8px 28px rgba(20,23,28,.16); font-size: 13px; text-align: center; animation: toast-in .2s ease both; }
 @keyframes lift { from { opacity: 0; transform: translateY(9px); } }
 @keyframes spin { to { transform: rotate(360deg); } }
+@keyframes toast-in { from { opacity: 0; transform: translate(-50%, 6px); } }
 
 @media (max-width: 600px) {
   main { padding: 54px 22px 90px; }
