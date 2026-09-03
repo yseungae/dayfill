@@ -172,7 +172,7 @@ async function renderMonth(year, month) {
 async function renderMenu() {
   const now = new Date(); $('#menuYear').textContent = state.year;
   $('#monthNavigation').innerHTML = t('months').map((name, month) => { const p = monthPercent(month, state.year, now); const current = state.year === now.getFullYear() && month === now.getMonth();
-    return `<button class="month-link ${current ? 'current' : ''}" data-month="${month}"><span>${name}</span><em>${p}%</em></button>`;
+    return `<button class="month-link ${current ? 'current' : ''}" data-month="${month}"><span>${name}</span><span class="mini-battery" role="img" aria-label="${name} ${p}%"><i class="mini-battery-fill" style="--progress:${p}%"></i></span><em>${p}%</em></button>`;
   }).join('');
   $$('[data-month]', $('#monthNavigation')).forEach(button => button.onclick = () => renderMonth(state.year, Number(button.dataset.month)));
   const years = [...new Set((await getAllEntries()).map(e => e.year))].filter(y => y < now.getFullYear()).sort((a,b) => b-a);

@@ -4,7 +4,7 @@
   --ink: #14171c;
   --muted: #6b7280;
   --line: #e5e7eb;
-  --blue: #4f6ef7;
+  --battery-fill: #4f6ef7;
   --blue-soft: #eef2ff;
   --blue-ui: #4563e6;
   --blue-dark: #344fc7;
@@ -44,11 +44,11 @@ main { flex: 1; width: min(100%, 900px); margin: 0 auto; padding: 72px 28px 100p
 .battery-cell { background: #f3f5f7; overflow: hidden; position: relative; }
 .battery-cell:first-child { border-radius: 5px 0 0 5px; }
 .battery-cell:last-child { border-radius: 0 5px 5px 0; }
-.battery-cell > i { display: block; position: absolute; inset: 0; background: var(--blue); transform-origin: left; }
+.battery-cell > i { display: block; position: absolute; inset: 0; background: var(--battery-fill); transform-origin: left; }
 .battery-cell > b { position: absolute; z-index: 2; top: 14%; bottom: 14%; right: 0; width: 1px; background: rgba(226,232,240,.82); }
 .progress-copy { margin: 0; font-weight: 500; font-size: clamp(20px, 5vw, 27px); line-height: 1.35; }
 .fridays { display: inline-flex; align-items: center; gap: 9px; margin: 11px 0 0; color: var(--muted); font-size: 15px; }
-.fridays::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--blue); }
+.fridays::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--battery-fill); }
 
 .today-section { margin-top: 108px; padding: 58px 0 0; border-top: 1px solid var(--line); }
 .section-heading { display: flex; justify-content: space-between; gap: 20px; align-items: end; margin-bottom: 28px; }
@@ -85,9 +85,12 @@ textarea:focus { border-color: var(--blue-ui); box-shadow: 0 0 0 3px rgba(79,110
 .menu-head strong { display: block; margin-top: 4px; font-weight: 500; font-size: 35px; }
 .close { font-size: 30px; }
 #monthNavigation { display: grid; gap: 4px; }
-.month-link { width: 100%; display: flex; justify-content: space-between; align-items: center; padding: 11px 10px; border: 0; border-radius: 7px; background: transparent; cursor: pointer; text-align: left; }
-.month-link:hover { background: rgba(47,93,70,.06); }
+.month-link { width: 100%; display: grid; grid-template-columns: 56px minmax(60px, 1fr) 42px; gap: 14px; align-items: center; padding: 10px; border: 0; border-radius: 7px; background: transparent; cursor: pointer; text-align: left; }
+.month-link:hover { background: rgba(79,110,247,.06); }
 .month-link.current { background: var(--blue-soft); color: var(--blue-dark); font-weight: 600; }
+.mini-battery { width: 100%; height: 12px; padding: 2px; border: 1.25px solid #25282d; border-radius: 3px; background: #fff; position: relative; }
+.mini-battery::after { content: ''; position: absolute; right: -4px; top: 3px; width: 3px; height: 4px; border-radius: 0 1px 1px 0; background: #25282d; }
+.mini-battery-fill { display: block; width: var(--progress); height: 100%; border-radius: 1px; background: var(--battery-fill); }
 .month-link em { font-style: normal; color: var(--muted); font-size: 12px; text-align: right; }
 .past-years { margin-top: 28px; padding-top: 22px; border-top: 1px solid var(--line); }
 .past-years > p { color: var(--muted); font-size: 12px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; }
