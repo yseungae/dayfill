@@ -211,7 +211,6 @@ async function checkForAppUpdate() {
   try {
     state.view === 'home' ? await renderHome() : await renderMonth(state.year, state.month);
     if (!('serviceWorker' in navigator)) { showUpdateToast(t('updateCurrent')); return; }
-    const hadController = Boolean(navigator.serviceWorker.controller);
     const registration = await navigator.serviceWorker.getRegistration() || await navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' });
     let discoveredWorker = registration.waiting || registration.installing || null;
     const onUpdateFound = () => { discoveredWorker = registration.installing; };
@@ -223,9 +222,7 @@ async function checkForAppUpdate() {
     if (!discoveredWorker) { showUpdateToast(t('updateCurrent')); return; }
     const worker = await waitForInstalled(discoveredWorker);
     if (worker.state === 'redundant') throw new Error('Service Worker installation failed');
-    if (hadController) sessionStorage.setItem('dayfill-update-applied', '1');
     (registration.waiting || worker).postMessage('SKIP_WAITING');
-    if (!hadController) showUpdateToast(t('updateCurrent'));
   } catch (error) {
     console.error('Dayfill update check failed:', error);
     showUpdateToast(t('updateFailed'), 3600);
@@ -257,8 +254,10 @@ document.addEventListener('click', e => { if (!e.target.closest('.language-wrap'
 syncStaticText(); renderHome();
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.addEventListener('controllerchange', () => {
-    if (!reloadTriggered && sessionStorage.getItem('dayfill-update-applied') === '1') {
-      reloadTriggered = true; window.location.reload();
+    if (!reloadTriggered) {
+      reloadTriggered = true;
+      sessionStorage.setItem('dayfill-update-applied', '1');
+      window.location.reload();
     }
   });
   window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' }));
