@@ -1,0 +1,10 @@
+{
+  "name": "time-tattery",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "icons": "node scripts/generate-icons.mjs",
+    "check": "node --check app.js && node --check sw.js",
+    "build": "npm run icons && npm run check"
+  }
+}

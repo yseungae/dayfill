@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="112" fill="#f6f3eb"/>
+  <path fill="#1e4031" d="M94 137h292c24 0 44 20 44 44v30h17c13 0 23 10 23 23v44c0 13-10 23-23 23h-17v30c0 24-20 44-44 44H94c-24 0-44-20-44-44V181c0-24 20-44 44-44Zm0 34c-6 0-10 4-10 10v150c0 6 4 10 10 10h292c6 0 10-4 10-10V181c0-6-4-10-10-10H94Z"/>
+  <rect x="103" y="191" width="274" height="130" rx="18" fill="#a8d94a"/>
+  <text x="240" y="279" text-anchor="middle" font-family="Arial,sans-serif" font-size="88" font-weight="800" letter-spacing="-4" fill="#173427">TT</text>
+</svg>
