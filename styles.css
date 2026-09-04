@@ -74,7 +74,7 @@ textarea:focus { border-color: var(--blue-ui); box-shadow: 0 0 0 3px rgba(79,110
 
 .saved-entry { display: grid; gap: 20px; }
 .photo-viewer-trigger { display: block; width: 100%; padding: 0; border: 0; background: transparent; cursor: zoom-in; touch-action: pan-y; }
-.photo-viewer-trigger img { display: block; width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 16px; background: #f1f3f6; }
+.photo-viewer-trigger img { display: block; width: 100%; aspect-ratio: 2 / 1; object-fit: cover; object-position: center; border-radius: 16px; background: #f1f3f6; }
 .photo-viewer-trigger:focus-visible { outline: 2px solid var(--blue-ui); outline-offset: 3px; border-radius: 16px; }
 .saved-entry blockquote { margin: 0; font-weight: 500; font-size: clamp(18px, 4vw, 23px); line-height: 1.65; white-space: pre-wrap; }
 .entry-actions { display: flex; gap: 10px; }
