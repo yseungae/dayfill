@@ -12,7 +12,7 @@ const messages = {
     cancel: '취소', pastYears: '지난 연도', records: '남긴 기록', noRecords: '이 달에는 아직 남긴 기록이 없어요.',
     monthProgress: (m, p) => `${m}의 ${p}%가 채워졌어요`, back: '← 올해로 돌아가기', footer: '당신의 시간은 채워지고 있어요.',
     textRequired: '짧은 기록이나 사진 중 하나를 남겨주세요.', photoError: '사진을 불러오지 못했어요. 다른 사진을 선택해주세요.',
-    calendar: '날짜 선택', pastQuestion: '이 날은 어땠나요?', pastPlaceholder: '이 날을 짧게 남겨보세요...', pastSave: '기록하기',
+    calendar: '날짜 선택', pastQuestion: '이 날은 어땠나요?', pastPlaceholder: '이 날을 짧게 남겨보세요...', pastSave: '기록하기', viewPhoto: '사진 크게 보기', closePhoto: '사진 닫기',
     weekdays: ['일', '월', '화', '수', '목', '금', '토'],
     months: Array.from({length: 12}, (_, i) => `${i + 1}월`), date: (d) => `${d.getFullYear()}년 ${d.getMonth()+1}월 ${d.getDate()}일`,
     shortDate: (d) => `${d.getMonth()+1}월 ${d.getDate()}일`, current: '현재'
@@ -27,7 +27,7 @@ const messages = {
     cancel: 'Cancel', pastYears: 'Past Years', records: 'Moments saved', noRecords: 'No moments saved in this month yet.',
     monthProgress: (m, p) => `${p}% filled`, back: '← Back to this year', footer: 'Your time is filling up.',
     textRequired: 'Add a short note or a photo.', photoError: 'We couldn’t read that photo. Please choose another.',
-    calendar: 'Choose a date', pastQuestion: 'How was this day?', pastPlaceholder: 'Leave a few words about this day...', pastSave: 'Save this day',
+    calendar: 'Choose a date', pastQuestion: 'How was this day?', pastPlaceholder: 'Leave a few words about this day...', pastSave: 'Save this day', viewPhoto: 'View photo', closePhoto: 'Close photo',
     weekdays: ['S', 'M', 'T', 'W', 'T', 'F', 'S'],
     months: ['January','February','March','April','May','June','July','August','September','October','November','December'],
     date: (d) => new Intl.DateTimeFormat('en-US', {month:'long', day:'numeric', year:'numeric'}).format(d),
@@ -98,6 +98,7 @@ function syncStaticText() {
   document.documentElement.lang = state.language;
   $$('[data-i18n]').forEach(el => el.textContent = t(el.dataset.i18n));
   $('#menuButton').ariaLabel = t('menuOpen'); $('#closeMenu').ariaLabel = t('menuClose'); $('#languageButton').ariaLabel = t('language'); $('#refreshButton').ariaLabel = t('refresh');
+  $('#imageLightbox').ariaLabel = t('viewPhoto'); $('#closeLightbox').ariaLabel = t('closePhoto');
   $$('[data-language]').forEach(button => button.classList.toggle('active', button.dataset.language === state.language));
 }
 
@@ -124,8 +125,9 @@ function renderEntryArea(entry, editing = false, options = {}) {
   const onChanged = options.onChanged || (async () => renderHome());
   if (entry && !editing) {
     const photoUrl = entry.photo ? URL.createObjectURL(entry.photo) : null;
-    area.innerHTML = `<article class="saved-entry">${photoUrl ? `<img src="${photoUrl}" alt="">` : ''}${entry.text ? `<blockquote>${escapeHtml(entry.text)}</blockquote>` : ''}
+    area.innerHTML = `<article class="saved-entry">${photoUrl ? photoButtonMarkup(photoUrl) : ''}${entry.text ? `<blockquote>${escapeHtml(entry.text)}</blockquote>` : ''}
       <div class="entry-actions"><button class="button ghost" id="editEntry">${icon('edit')}${t('edit')}</button><button class="button ghost" id="deleteEntry">${icon('trash')}${t('delete')}</button></div></article>`;
+    bindPhotoViewers(area);
     $('#editEntry', area).onclick = () => { state.photo = entry.photo || null; renderEntryArea(entry, true, options); };
     $('#deleteEntry', area).onclick = () => {
       state.deleteRequest = { key, onDeleted: onChanged };
@@ -203,7 +205,7 @@ async function renderMonth(year, month, options = {}) {
   state.view = 'month'; state.year = year; state.month = month; closeMenu();
   const p = monthPercent(month, year); const entries = (await getAllEntries()).filter(e => e.year === year && e.month === month).sort((a,b) => a.date.localeCompare(b.date));
   const cards = entries.map(entry => { const d = new Date(`${entry.date}T12:00:00`); const src = entry.photo ? URL.createObjectURL(entry.photo) : '';
-    return `<article class="entry-card">${src ? `<img src="${src}" alt="">` : ''}<time datetime="${entry.date}">${t('shortDate', d)}</time>${entry.text ? `<p>${escapeHtml(entry.text)}</p>` : ''}</article>`;
+    return `<article class="entry-card">${src ? photoButtonMarkup(src) : ''}<time datetime="${entry.date}">${t('shortDate', d)}</time>${entry.text ? `<p>${escapeHtml(entry.text)}</p>` : ''}</article>`;
   }).join('');
   $('#app').innerHTML = `<section class="month-view"><button class="back-button" id="backHome">${t('back')}</button><section class="hero">
     <p class="eyebrow">${year}</p><div class="month-title"><h1 class="year">${t('months')[month]}</h1><button class="calendar-toggle" id="calendarToggle" aria-label="${t('calendar')}" aria-expanded="${options.calendarOpen ? 'true' : 'false'}">${icon('calendar')}</button></div>${batteryMarkup(p, t('months')[month])}
@@ -214,6 +216,7 @@ async function renderMonth(year, month, options = {}) {
   $('#backHome').onclick = renderHome;
   $('#calendarToggle').onclick = () => { const panel = $('#calendarPanel'); panel.hidden = !panel.hidden; $('#calendarToggle').ariaExpanded = String(!panel.hidden); };
   $$('.calendar-day:not(:disabled)').forEach(button => button.onclick = () => openMonthEntry(button.dataset.date, entries));
+  bindPhotoViewers($('#app'));
   if (options.selectedDateKey) await openMonthEntry(options.selectedDateKey, entries);
   renderMenu(); $('#app').focus();
   options.preserveScroll ? window.scrollTo(0, previousScroll) : window.scrollTo({top: 0, behavior: 'smooth'});
@@ -229,6 +232,28 @@ async function renderMenu() {
   $$('[data-year]', $('#pastYears')).forEach(button => button.onclick = () => { state.year = Number(button.dataset.year); renderMenu(); });
 }
 function escapeHtml(value) { const div = document.createElement('div'); div.textContent = value; return div.innerHTML; }
+function photoButtonMarkup(src) {
+  return `<button class="photo-viewer-trigger" type="button" data-photo-src="${src}" aria-label="${t('viewPhoto')}"><img src="${src}" alt=""></button>`;
+}
+function bindPhotoViewers(root = document) {
+  $$('.photo-viewer-trigger', root).forEach(button => { button.onclick = () => openLightbox(button.dataset.photoSrc, button); });
+}
+let lightboxScrollY = 0;
+let lightboxTrigger = null;
+function openLightbox(src, trigger) {
+  const lightbox = $('#imageLightbox');
+  lightboxScrollY = window.scrollY; lightboxTrigger = trigger;
+  $('#lightboxImage').src = src; lightbox.hidden = false;
+  document.body.style.top = `-${lightboxScrollY}px`;
+  document.body.classList.add('lightbox-open');
+  $('#closeLightbox').focus();
+}
+function closeLightbox() {
+  const lightbox = $('#imageLightbox'); if (lightbox.hidden) return;
+  lightbox.hidden = true; $('#lightboxImage').removeAttribute('src');
+  document.body.classList.remove('lightbox-open'); document.body.style.top = '';
+  window.scrollTo(0, lightboxScrollY); lightboxTrigger?.focus(); lightboxTrigger = null;
+}
 let toastTimer;
 function showUpdateToast(message, duration = 2600) {
   const toast = $('#updateToast');
@@ -301,6 +326,9 @@ $('#confirmDelete').onclick = async () => {
   await deleteEntry(key); state.deleteRequest = null; $('#confirmDialog').close(); await onDeleted();
 };
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeMenu(); });
+$('#closeLightbox').onclick = closeLightbox;
+$('#imageLightbox').onclick = event => { if (event.target === $('#imageLightbox')) closeLightbox(); };
+document.addEventListener('keydown', event => { if (event.key === 'Escape') closeLightbox(); });
 document.addEventListener('click', e => { if (!e.target.closest('.language-wrap')) $('#languagePopover').hidden = true; });
 
 syncStaticText(); renderHome();
