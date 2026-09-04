@@ -16,14 +16,14 @@ const messages = {
     shortDate: (d) => `${d.getMonth()+1}월 ${d.getDate()}일`, current: '현재'
   },
   en: {
-    menuOpen: 'Open menu', menuClose: 'Close menu', language: 'Change language', refresh: 'Check for updates', overview: 'Time lived this year',
+    menuOpen: 'Open menu', menuClose: 'Close menu', language: 'Change language', refresh: 'Check for updates', overview: 'This Year',
     updateChecking: 'Checking for updates...', updateDone: 'Dayfill has been updated.', updateCurrent: "You're already up to date.", updateFailed: 'Could not check for updates. Please try again.',
-    yearProgress: (p) => `This year is ${p}% filled`, fridays: (n) => `${n} Friday${n === 1 ? '' : 's'} left this year`,
+    yearProgress: (p) => `${p}% filled`, fridays: (n) => `${n} Friday${n === 1 ? '' : 's'} left this year`,
     todayQuestion: 'How was today?', addPhoto: 'Add photo', changePhoto: 'Change photo', removePhoto: 'Remove photo',
     placeholder: 'Leave a few words about today...', save: 'Save today', update: 'Save changes', saved: 'Today’s moment is saved.',
-    edit: 'Edit entry', delete: 'Delete entry', deleteTitle: 'Delete this entry?', deleteBody: 'The photo and note will be removed from this device.',
+    edit: 'Edit', delete: 'Delete', deleteTitle: 'Delete this entry?', deleteBody: 'The photo and note will be removed from this device.',
     cancel: 'Cancel', pastYears: 'Past Years', records: 'Moments saved', noRecords: 'No moments saved in this month yet.',
-    monthProgress: (m, p) => `${m} is ${p}% filled`, back: '← Back to this year', footer: 'Your time is filling up.',
+    monthProgress: (m, p) => `${p}% filled`, back: '← Back to this year', footer: 'Your time is filling up.',
     textRequired: 'Add a short note or a photo.', photoError: 'We couldn’t read that photo. Please choose another.',
     months: ['January','February','March','April','May','June','July','August','September','October','November','December'],
     date: (d) => new Intl.DateTimeFormat('en-US', {month:'long', day:'numeric', year:'numeric'}).format(d),

@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'dayfill-v5';
+const CACHE_VERSION = 'dayfill-v6';
 const ASSETS = [
   './', './index.html', './styles.css', './app.js', './manifest.webmanifest',
   './icons/icon.svg', './icons/icon-192.png', './icons/icon-512.png'
