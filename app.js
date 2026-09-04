@@ -12,6 +12,8 @@ const messages = {
     cancel: '취소', pastYears: '지난 연도', records: '남긴 기록', noRecords: '이 달에는 아직 남긴 기록이 없어요.',
     monthProgress: (m, p) => `${m}의 ${p}%가 채워졌어요`, back: '← 올해로 돌아가기', footer: '당신의 시간은 채워지고 있어요.',
     textRequired: '짧은 기록이나 사진 중 하나를 남겨주세요.', photoError: '사진을 불러오지 못했어요. 다른 사진을 선택해주세요.',
+    calendar: '날짜 선택', pastQuestion: '이 날은 어땠나요?', pastPlaceholder: '이 날을 짧게 남겨보세요...', pastSave: '기록하기',
+    weekdays: ['일', '월', '화', '수', '목', '금', '토'],
     months: Array.from({length: 12}, (_, i) => `${i + 1}월`), date: (d) => `${d.getFullYear()}년 ${d.getMonth()+1}월 ${d.getDate()}일`,
     shortDate: (d) => `${d.getMonth()+1}월 ${d.getDate()}일`, current: '현재'
   },
@@ -25,13 +27,15 @@ const messages = {
     cancel: 'Cancel', pastYears: 'Past Years', records: 'Moments saved', noRecords: 'No moments saved in this month yet.',
     monthProgress: (m, p) => `${p}% filled`, back: '← Back to this year', footer: 'Your time is filling up.',
     textRequired: 'Add a short note or a photo.', photoError: 'We couldn’t read that photo. Please choose another.',
+    calendar: 'Choose a date', pastQuestion: 'How was this day?', pastPlaceholder: 'Leave a few words about this day...', pastSave: 'Save this day',
+    weekdays: ['S', 'M', 'T', 'W', 'T', 'F', 'S'],
     months: ['January','February','March','April','May','June','July','August','September','October','November','December'],
     date: (d) => new Intl.DateTimeFormat('en-US', {month:'long', day:'numeric', year:'numeric'}).format(d),
     shortDate: (d) => new Intl.DateTimeFormat('en-US', {month:'long', day:'numeric'}).format(d), current: 'Now'
   }
 };
 
-const state = { language: localStorage.getItem('tt-language') || 'ko', view: 'home', year: new Date().getFullYear(), month: null, editing: false, photo: null };
+const state = { language: localStorage.getItem('tt-language') || 'ko', view: 'home', year: new Date().getFullYear(), month: null, photo: null, deleteRequest: null };
 const dbPromise = new Promise((resolve, reject) => {
   const request = indexedDB.open('time-tattery', 1);
   request.onupgradeneeded = () => {
@@ -112,14 +116,21 @@ async function renderHome() {
   renderEntryArea(entry); renderMenu();
 }
 
-function renderEntryArea(entry, editing = false) {
-  const area = $('#entryArea');
+function renderEntryArea(entry, editing = false, options = {}) {
+  const date = options.date || new Date();
+  const key = localDateKey(date);
+  const isToday = key === localDateKey();
+  const area = $(options.container || '#entryArea');
+  const onChanged = options.onChanged || (async () => renderHome());
   if (entry && !editing) {
     const photoUrl = entry.photo ? URL.createObjectURL(entry.photo) : null;
     area.innerHTML = `<article class="saved-entry">${photoUrl ? `<img src="${photoUrl}" alt="">` : ''}${entry.text ? `<blockquote>${escapeHtml(entry.text)}</blockquote>` : ''}
       <div class="entry-actions"><button class="button ghost" id="editEntry">${icon('edit')}${t('edit')}</button><button class="button ghost" id="deleteEntry">${icon('trash')}${t('delete')}</button></div></article>`;
-    $('#editEntry').onclick = () => { state.photo = entry.photo || null; renderEntryArea(entry, true); };
-    $('#deleteEntry').onclick = () => $('#confirmDialog').showModal();
+    $('#editEntry', area).onclick = () => { state.photo = entry.photo || null; renderEntryArea(entry, true, options); };
+    $('#deleteEntry', area).onclick = () => {
+      state.deleteRequest = { key, onDeleted: onChanged };
+      $('#confirmDialog').showModal();
+    };
     return;
   }
   state.photo = editing && entry ? entry.photo || null : null;
@@ -127,28 +138,27 @@ function renderEntryArea(entry, editing = false) {
     <input class="photo-input" id="photoInput" type="file" accept="image/*">
     <label class="photo-drop" for="photoInput" id="photoDrop"><span class="photo-prompt">${icon('image')} ${state.photo ? t('changePhoto') : t('addPhoto')}</span></label>
     <div class="photo-controls" id="photoControls" ${state.photo ? '' : 'hidden'}><button class="button ghost" type="button" id="removePhoto">${icon('trash')}${t('removePhoto')}</button></div>
-    <textarea id="entryText" maxlength="500" placeholder="${t('placeholder')}">${entry ? escapeHtml(entry.text || '') : ''}</textarea>
-    <button class="button" type="submit">${editing ? t('update') : t('save')}</button><p class="form-note" id="formNote" aria-live="polite"></p>
+    <textarea id="entryText" maxlength="500" placeholder="${isToday ? t('placeholder') : t('pastPlaceholder')}">${entry ? escapeHtml(entry.text || '') : ''}</textarea>
+    <button class="button" type="submit">${editing ? t('update') : (isToday ? t('save') : t('pastSave'))}</button><p class="form-note" id="formNote" aria-live="polite"></p>
   </form>`;
-  updatePhotoPreview();
-  $('#photoInput').onchange = async (event) => {
+  updatePhotoPreview(area);
+  $('#photoInput', area).onchange = async (event) => {
     const file = event.target.files[0]; if (!file) return;
-    try { state.photo = await compressImage(file); updatePhotoPreview(); } catch { $('#formNote').textContent = t('photoError'); }
+    try { state.photo = await compressImage(file); updatePhotoPreview(area); } catch { $('#formNote', area).textContent = t('photoError'); }
   };
-  $('#removePhoto').onclick = () => { state.photo = null; $('#photoInput').value = ''; updatePhotoPreview(); };
-  $('#entryForm').onsubmit = async (event) => {
-    event.preventDefault(); const text = $('#entryText').value.trim();
-    if (!text && !state.photo) { $('#formNote').textContent = t('textRequired'); return; }
-    const now = new Date(); const key = localDateKey(now);
-    await putEntry({ date: key, year: now.getFullYear(), month: now.getMonth(), yearMonth: `${now.getFullYear()}-${now.getMonth()}`, text, photo: state.photo, updatedAt: Date.now() });
-    const saved = await getEntry(key); renderEntryArea(saved); renderMenu();
+  $('#removePhoto', area).onclick = () => { state.photo = null; $('#photoInput', area).value = ''; updatePhotoPreview(area); };
+  $('#entryForm', area).onsubmit = async (event) => {
+    event.preventDefault(); const text = $('#entryText', area).value.trim();
+    if (!text && !state.photo) { $('#formNote', area).textContent = t('textRequired'); return; }
+    await putEntry({ date: key, year: date.getFullYear(), month: date.getMonth(), yearMonth: `${date.getFullYear()}-${date.getMonth()}`, text, photo: state.photo, createdAt: entry?.createdAt || Date.now(), updatedAt: Date.now() });
+    await onChanged(await getEntry(key)); renderMenu();
   };
 }
-function updatePhotoPreview() {
-  const drop = $('#photoDrop'); if (!drop) return;
+function updatePhotoPreview(area = document) {
+  const drop = $('#photoDrop', area); if (!drop) return;
   $('img', drop)?.remove();
   $('.photo-prompt', drop).innerHTML = `${icon('image')} ${state.photo ? t('changePhoto') : t('addPhoto')}`;
-  $('#photoControls').hidden = !state.photo;
+  $('#photoControls', area).hidden = !state.photo;
   if (state.photo) { const img = new Image(); img.src = URL.createObjectURL(state.photo); img.alt = ''; drop.prepend(img); }
 }
 async function compressImage(file) {
@@ -159,17 +169,54 @@ async function compressImage(file) {
   return new Promise((resolve, reject) => canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error('compress')), 'image/jpeg', .84));
 }
 
-async function renderMonth(year, month) {
+function calendarMarkup(year, month, entries) {
+  const firstDay = new Date(year, month, 1).getDay();
+  const days = new Date(year, month + 1, 0).getDate();
+  const todayKey = localDateKey();
+  const entryDates = new Set(entries.map(entry => entry.date));
+  const blanks = Array.from({length: firstDay}, () => '<span class="calendar-blank"></span>').join('');
+  const dates = Array.from({length: days}, (_, index) => {
+    const date = new Date(year, month, index + 1);
+    const key = localDateKey(date);
+    const future = date > new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate());
+    return `<button class="calendar-day ${key === todayKey ? 'today' : ''} ${entryDates.has(key) ? 'has-entry' : ''}" data-date="${key}" ${future ? 'disabled' : ''}><span>${index + 1}</span></button>`;
+  }).join('');
+  return `<div class="calendar-weekdays">${t('weekdays').map(day => `<span>${day}</span>`).join('')}</div><div class="calendar-days">${blanks}${dates}</div>`;
+}
+
+async function openMonthEntry(dateKey, entries) {
+  const date = new Date(`${dateKey}T12:00:00`);
+  const entry = entries.find(item => item.date === dateKey) || await getEntry(dateKey);
+  const panel = $('#monthEntryPanel');
+  panel.hidden = false;
+  panel.innerHTML = `<div class="section-heading"><div><p>${t('date', date)}</p><h2>${dateKey === localDateKey() ? t('todayQuestion') : t('pastQuestion')}</h2></div><span class="counter">${entry ? '01 / 01' : '00 / 01'}</span></div><div id="selectedEntryArea"></div>`;
+  renderEntryArea(entry, false, {
+    date,
+    container: '#selectedEntryArea',
+    onChanged: async () => renderMonth(date.getFullYear(), date.getMonth(), { calendarOpen: true, selectedDateKey: dateKey, preserveScroll: true })
+  });
+  panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+async function renderMonth(year, month, options = {}) {
+  const previousScroll = window.scrollY;
   state.view = 'month'; state.year = year; state.month = month; closeMenu();
   const p = monthPercent(month, year); const entries = (await getAllEntries()).filter(e => e.year === year && e.month === month).sort((a,b) => a.date.localeCompare(b.date));
   const cards = entries.map(entry => { const d = new Date(`${entry.date}T12:00:00`); const src = entry.photo ? URL.createObjectURL(entry.photo) : '';
     return `<article class="entry-card">${src ? `<img src="${src}" alt="">` : ''}<time datetime="${entry.date}">${t('shortDate', d)}</time>${entry.text ? `<p>${escapeHtml(entry.text)}</p>` : ''}</article>`;
   }).join('');
   $('#app').innerHTML = `<section class="month-view"><button class="back-button" id="backHome">${t('back')}</button><section class="hero">
-    <p class="eyebrow">${year}</p><h1 class="year">${t('months')[month]}</h1>${batteryMarkup(p, t('months')[month])}
+    <p class="eyebrow">${year}</p><div class="month-title"><h1 class="year">${t('months')[month]}</h1><button class="calendar-toggle" id="calendarToggle" aria-label="${t('calendar')}" aria-expanded="${options.calendarOpen ? 'true' : 'false'}">${icon('calendar')}</button></div>${batteryMarkup(p, t('months')[month])}
     <p class="progress-copy">${t('monthProgress', t('months')[month], p)}</p></section>
+    <section class="calendar-panel" id="calendarPanel" ${options.calendarOpen ? '' : 'hidden'}>${calendarMarkup(year, month, entries)}</section>
+    <section class="date-entry-panel" id="monthEntryPanel" hidden></section>
     <section class="month-records"><h2>${t('records')}</h2>${cards ? `<div class="entry-grid">${cards}</div>` : `<div class="empty-state">${t('noRecords')}</div>`}</section></section>`;
-  $('#backHome').onclick = renderHome; renderMenu(); $('#app').focus(); window.scrollTo({top: 0, behavior: 'smooth'});
+  $('#backHome').onclick = renderHome;
+  $('#calendarToggle').onclick = () => { const panel = $('#calendarPanel'); panel.hidden = !panel.hidden; $('#calendarToggle').ariaExpanded = String(!panel.hidden); };
+  $$('.calendar-day:not(:disabled)').forEach(button => button.onclick = () => openMonthEntry(button.dataset.date, entries));
+  if (options.selectedDateKey) await openMonthEntry(options.selectedDateKey, entries);
+  renderMenu(); $('#app').focus();
+  options.preserveScroll ? window.scrollTo(0, previousScroll) : window.scrollTo({top: 0, behavior: 'smooth'});
 }
 async function renderMenu() {
   const now = new Date(); $('#menuYear').textContent = state.year;
@@ -235,7 +282,8 @@ function icon(name) {
   const paths = {
     image: '<rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8.5" cy="9" r="1.5"/><path d="m21 15-5-5L5 20"/>',
     edit: '<path d="M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L8 18l-4 1 1-4Z"/>',
-    trash: '<path d="M4 7h16M9 7V4h6v3m3 0-1 13H7L6 7M10 11v5M14 11v5"/>'
+    trash: '<path d="M4 7h16M9 7V4h6v3m3 0-1 13H7L6 7M10 11v5M14 11v5"/>',
+    calendar: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01"/>'
   };
   return `<svg class="inline-icon" viewBox="0 0 24 24" aria-hidden="true">${paths[name]}</svg>`;
 }
@@ -246,8 +294,12 @@ $('#menuButton').onclick = openMenu; $('#closeMenu').onclick = closeMenu; $('#sc
 $('#refreshButton').onclick = checkForAppUpdate;
 $('#languageButton').onclick = () => { const pop = $('#languagePopover'); pop.hidden = !pop.hidden; $('#languageButton').ariaExpanded = String(!pop.hidden); };
 $$('[data-language]').forEach(button => button.onclick = async () => { state.language = button.dataset.language; localStorage.setItem('tt-language', state.language); $('#languagePopover').hidden = true; syncStaticText(); state.view === 'home' ? await renderHome() : await renderMonth(state.year, state.month); });
-$('#cancelDelete').onclick = () => $('#confirmDialog').close();
-$('#confirmDelete').onclick = async () => { await deleteEntry(localDateKey()); $('#confirmDialog').close(); await renderHome(); };
+$('#cancelDelete').onclick = () => { state.deleteRequest = null; $('#confirmDialog').close(); };
+$('#confirmDelete').onclick = async () => {
+  if (!state.deleteRequest) return;
+  const { key, onDeleted } = state.deleteRequest;
+  await deleteEntry(key); state.deleteRequest = null; $('#confirmDialog').close(); await onDeleted();
+};
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeMenu(); });
 document.addEventListener('click', e => { if (!e.target.closest('.language-wrap')) $('#languagePopover').hidden = true; });
 

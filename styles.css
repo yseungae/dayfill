@@ -98,6 +98,20 @@ textarea:focus { border-color: var(--blue-ui); box-shadow: 0 0 0 3px rgba(79,110
 
 .month-view { animation: lift .35s ease both; }
 .back-button { margin-bottom: 24px; border: 0; background: transparent; color: var(--blue-ui); font-weight: 600; cursor: pointer; }
+.month-title { display: flex; justify-content: center; align-items: center; gap: 12px; }
+.calendar-toggle { width: 36px; height: 36px; margin-right: -48px; padding: 7px; border: 0; background: transparent; color: var(--ink); cursor: pointer; }
+.calendar-toggle:hover, .calendar-toggle[aria-expanded="true"] { color: var(--blue-ui); }
+.calendar-toggle .inline-icon { width: 21px; height: 21px; }
+.calendar-panel { width: min(100%, 430px); margin: 54px auto 0; padding: 22px 4px; border-block: 1px solid var(--line); }
+.calendar-weekdays, .calendar-days { display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; }
+.calendar-weekdays { margin-bottom: 8px; color: var(--muted); font-size: 11px; }
+.calendar-day { position: relative; width: 34px; height: 36px; margin: 1px auto; padding: 0; border: 0; border-radius: 50%; background: transparent; color: var(--ink); cursor: pointer; font-size: 13px; }
+.calendar-day:hover:not(:disabled) { background: var(--blue-soft); }
+.calendar-day.today { background: var(--blue-ui); color: #fff; font-weight: 600; }
+.calendar-day:disabled { color: #c5cad2; cursor: default; }
+.calendar-day.has-entry::after { content: ''; position: absolute; left: 50%; bottom: 3px; width: 4px; height: 4px; border-radius: 50%; background: var(--battery-fill); transform: translateX(-50%); }
+.calendar-day.today.has-entry::after { background: #fff; }
+.date-entry-panel { width: min(100%, 620px); margin: 54px auto 0; padding-top: 42px; border-top: 1px solid var(--line); }
 .month-records { margin-top: 68px; }
 .month-records h2 { font-weight: 600; font-size: 25px; }
 .entry-grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 14px; }
@@ -126,6 +140,8 @@ dialog p { color: var(--muted); line-height: 1.6; }
   .battery { height: 78px; padding: 5px; border-width: 2.5px; border-radius: 9px; }
   .battery-wrap { margin-top: 35px; }
   .today-section { margin-top: 84px; padding-top: 42px; }
+  .calendar-panel { margin-top: 42px; }
+  .date-entry-panel { margin-top: 42px; padding-top: 36px; }
   .section-heading { align-items: start; flex-direction: column; gap: 6px; }
   .entry-grid { grid-template-columns: 1fr; }
 }
